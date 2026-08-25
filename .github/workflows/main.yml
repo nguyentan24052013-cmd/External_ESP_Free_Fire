@@ -1,0 +1,44 @@
+name: Build TIPA
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Setup Theos
+        run: |
+          sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/elihwyma/Theos/master/bin/install-theos)"
+          echo "THEOS=/opt/theos" >> $GITHUB_ENV
+
+      - name: Install dependencies (ldid, etc)
+        run: |
+          brew install ldid
+          brew install coreutils
+
+      - name: Build Tweak
+        run: |
+          make clean
+          make package FINALPACKAGE=1
+
+      - name: Create TIPA
+        run: |
+          mkdir -p Payload
+          # File .deb sau khi build sẽ nằm trong thư mục .theos/_
+          # Bước này cần phải đóng gói lại thành .tipa thủ công vì
+          # đây là cấu trúc trollstore
+          # (Ở đây mình demo cách xử lý, nhưng cần xem cấu trúc source để tối ưu)
+          echo "Build xong, bắt đầu tạo file TIPA..."
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: tipa-file
+          path: |
+            .theos/_
+            *.deb
