@@ -1,0 +1,45 @@
+name: Build TIPA
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+      - name: Install Theos
+        run: |
+          THEOS="$GITHUB_WORKSPACE/theos"
+          echo "THEOS=$THEOS" >> $GITHUB_ENV
+          git clone --recursive https://github.com/theos/theos.git $THEOS
+          brew install ldid
+      - name: Install iPhoneOS 16.5 SDK
+        run: |
+          THEOS="$GITHUB_WORKSPACE/theos"
+          mkdir -p $THEOS/sdks
+          wget -q https://github.com/theos/sdks/archive/refs/heads/master.zip -O /tmp/sdks.zip
+          unzip -q /tmp/sdks.zip -d $THEOS/sdks
+          mv $THEOS/sdks/sdks-master/iPhoneOS16.5.sdk $THEOS/sdks/
+          rm -rf $THEOS/sdks/sdks-master
+      - name: Build App
+        run: |
+          export THEOS="$GITHUB_WORKSPACE/theos"
+          export THEOS_PACKAGE_SCHEME=rootless
+          # Cứu cái App ngay khi nó vừa được ký xong, trước khi lỗi
+          mkdir -p .theos/obj
+          make clean
+          make do
+          if [ -d ".theos/obj/TrollSpeed.app" ]; then
+            mv .theos/obj/TrollSpeed.app .theos/obj/TrollSpeed_saved.app
+          fi
+          # Dùng lệnh find để tìm file .app ở bất kỳ đâu trong project
+          find . -name "*.app" -type d -exec cp -r {} .theos/obj/ \;
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tipa-file
+          path: |
+            .theos/obj/*
