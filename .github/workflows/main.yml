@@ -1,0 +1,28 @@
+name: Build TIPA
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+      - name: Setup Theos
+        run: |
+          sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+          echo "THEOS=/opt/theos" >> $GITHUB_ENV
+          brew install ldid
+      - name: Build Tweak
+        run: |
+          export THEOS=/opt/theos
+          make package FINALPACKAGE=1
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tipa-file
+          path: |
+            .theos/_
+            *.deb
