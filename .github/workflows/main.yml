@@ -1,0 +1,44 @@
+name: Build TIPA
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+      - name: Install Theos
+        run: |
+          THEOS="$GITHUB_WORKSPACE/theos"
+          echo "THEOS=$THEOS" >> $GITHUB_ENV
+          git clone --recursive https://github.com/theos/theos.git $THEOS
+          brew install ldid
+      - name: Install iPhoneOS 16.5 SDK
+        run: |
+          THEOS="$GITHUB_WORKSPACE/theos"
+          mkdir -p $THEOS/sdks
+          wget -q https://github.com/theos/sdks/archive/refs/heads/master.zip -O /tmp/sdks.zip
+          unzip -q /tmp/sdks.zip -d $THEOS/sdks
+          mv $THEOS/sdks/sdks-master/iPhoneOS16.5.sdk $THEOS/sdks/
+          rm -rf $THEOS/sdks/sdks-master
+      - name: Build App
+        run: |
+          export THEOS="$GITHUB_WORKSPACE/theos"
+          export THEOS_PACKAGE_SCHEME=rootless
+          # Tạo thư mục chứa để nhận file khi nó chết ở bước sau
+          mkdir -p .theos/obj
+          make clean
+          make do
+          # Nếu cái app vừa build nằm ở chỗ khác, ép nó chạy ra ngoài
+          if [ -d ".theos/_/Applications/TrollSpeed.app" ]; then
+            mv .theos/_/Applications/TrollSpeed.app .theos/obj/
+          fi
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tipa-file
+          path: |
+            .theos/obj/*
